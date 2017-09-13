@@ -16,7 +16,6 @@
 
 package org.jfaster.mango.operator;
 
-import org.jfaster.mango.annotation.ReturnGeneratedId;
 import org.jfaster.mango.binding.BoundSql;
 import org.jfaster.mango.binding.InvocationContext;
 import org.jfaster.mango.descriptor.MethodDescriptor;
@@ -24,6 +23,7 @@ import org.jfaster.mango.exception.DescriptionException;
 import org.jfaster.mango.jdbc.GeneratedKeyHolder;
 import org.jfaster.mango.parser.ASTRootNode;
 import org.jfaster.mango.parser.EmptyObjectException;
+import org.jfaster.mango.stat.InvocationStat;
 import org.jfaster.mango.type.TypeHandler;
 import org.jfaster.mango.type.TypeHandlerRegistry;
 import org.jfaster.mango.util.ToStringHelper;
@@ -44,14 +44,13 @@ public class UpdateOperator extends AbstractOperator {
 
   private TypeHandler<? extends Number> generatedKeyTypeHandler;
 
-  public UpdateOperator(ASTRootNode rootNode, MethodDescriptor md, ConfigHolder configHolder) {
-    super(rootNode, md.getDaoClass(), configHolder);
+  public UpdateOperator(ASTRootNode rootNode, MethodDescriptor md, Config config) {
+    super(rootNode, md, config);
     init(md, rootNode.getSQLType());
   }
 
   private void init(MethodDescriptor md, SQLType sqlType) {
-    ReturnGeneratedId returnGeneratedIdAnno = md.getAnnotation(ReturnGeneratedId.class);
-    returnGeneratedId = returnGeneratedIdAnno != null // 要求返回自增id
+    returnGeneratedId = md.isReturnGeneratedId() // 要求返回自增id
         && sqlType == SQLType.INSERT; // 是插入语句
 
     Class<?> returnRawType = md.getReturnRawType();
@@ -75,18 +74,17 @@ public class UpdateOperator extends AbstractOperator {
   }
 
   @Override
-  public Object execute(Object[] values) {
+  public Object execute(Object[] values, InvocationStat stat) {
     InvocationContext context = invocationContextFactory.newInvocationContext(values);
-    return execute(context);
+    return execute(context, stat);
   }
 
-  public Object execute(InvocationContext context) {
+  public Object execute(InvocationContext context, InvocationStat stat) {
     context.setGlobalTable(tableGenerator.getTable(context));
 
     try {
       rootNode.render(context);
     } catch (EmptyObjectException e) {
-      final Config config = configHolder.get();
       if (config.isCompatibleWithEmptyList()) {
         return transformer.transform(0);
       } else {
@@ -95,14 +93,13 @@ public class UpdateOperator extends AbstractOperator {
     }
 
     BoundSql boundSql = context.getBoundSql();
-    invocationInterceptorChain.intercept(boundSql, context);  // 拦截器
-
     DataSource ds = dataSourceGenerator.getDataSource(context, daoClass);
-    Number r = executeDb(ds, boundSql);
+    invocationInterceptorChain.intercept(boundSql, context, ds);  // 拦截器
+    Number r = executeDb(ds, boundSql, stat);
     return transformer.transform(r);
   }
 
-  private Number executeDb(DataSource ds, BoundSql boundSql) {
+  private Number executeDb(DataSource ds, BoundSql boundSql, InvocationStat stat) {
     Number r = null;
     long now = System.nanoTime();
     try {
@@ -116,9 +113,9 @@ public class UpdateOperator extends AbstractOperator {
     } finally {
       long cost = System.nanoTime() - now;
       if (r != null) {
-        statsCounter.recordDatabaseExecuteSuccess(cost);
+        stat.recordDatabaseExecuteSuccess(cost);
       } else {
-        statsCounter.recordDatabaseExecuteException(cost);
+        stat.recordDatabaseExecuteException(cost);
       }
     }
     return r;

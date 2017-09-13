@@ -16,6 +16,8 @@
 
 package org.jfaster.mango.annotation;
 
+import org.jfaster.mango.datasource.AbstractDataSourceFactory;
+
 import java.lang.annotation.*;
 
 /**
@@ -29,11 +31,11 @@ import java.lang.annotation.*;
 public @interface DB {
 
   /**
-   * 使用数据源，只有在使用{@link org.jfaster.mango.datasource.MultipleDatabaseDataSourceFactory}时，database的值才有意义。
+   * 数据源工厂名
    *
    * @return
    */
-  String database() default "";
+  String name() default AbstractDataSourceFactory.DEFULT_NAME;
 
   /**
    * 全局表名，在{@link SQL}的字符串参数，可以通过#table的方式引用此全局表名。

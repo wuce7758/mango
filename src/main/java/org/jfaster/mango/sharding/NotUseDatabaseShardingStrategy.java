@@ -17,14 +17,14 @@
 package org.jfaster.mango.sharding;
 
 /**
- * {@link org.jfaster.mango.annotation.Sharding#databaseShardingStrategy()}的默认值，表示不使用数据源路由
+ * {@link org.jfaster.mango.annotation.Sharding#databaseShardingStrategy()}的默认值，表示不使用分库
  *
  * @author ash
  */
 public final class NotUseDatabaseShardingStrategy implements DatabaseShardingStrategy {
 
   @Override
-  public String getDatabase(Object shardingParameter) {
+  public String getDataSourceFactoryName(Object shardingParameter) {
     throw new UnsupportedOperationException("error, unreachable code");
   }
 

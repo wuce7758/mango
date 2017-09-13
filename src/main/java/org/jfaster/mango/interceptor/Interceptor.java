@@ -19,6 +19,7 @@ package org.jfaster.mango.interceptor;
 import org.jfaster.mango.binding.BoundSql;
 import org.jfaster.mango.util.jdbc.SQLType;
 
+import javax.sql.DataSource;
 import java.util.List;
 
 /**
@@ -26,6 +27,6 @@ import java.util.List;
  */
 public interface Interceptor {
 
-  public void intercept(BoundSql boundSql, List<Parameter> parameters, SQLType sqlType);
+  public void intercept(BoundSql boundSql, List<Parameter> parameters, SQLType sqlType, DataSource dataSource);
 
 }

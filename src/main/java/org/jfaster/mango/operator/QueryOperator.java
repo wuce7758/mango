@@ -16,6 +16,7 @@
 
 package org.jfaster.mango.operator;
 
+import org.jfaster.mango.annotation.Column;
 import org.jfaster.mango.annotation.Mapper;
 import org.jfaster.mango.annotation.Result;
 import org.jfaster.mango.annotation.Results;
@@ -29,7 +30,10 @@ import org.jfaster.mango.mapper.RowMapper;
 import org.jfaster.mango.mapper.SingleColumnRowMapper;
 import org.jfaster.mango.parser.ASTRootNode;
 import org.jfaster.mango.parser.EmptyObjectException;
+import org.jfaster.mango.stat.InvocationStat;
 import org.jfaster.mango.type.TypeHandlerRegistry;
+import org.jfaster.mango.util.bean.BeanUtil;
+import org.jfaster.mango.util.bean.PropertyMeta;
 import org.jfaster.mango.util.reflect.Reflection;
 
 import javax.sql.DataSource;
@@ -47,8 +51,8 @@ public class QueryOperator extends AbstractOperator {
   protected ListSupplier listSupplier;
   protected SetSupplier setSupplier;
 
-  public QueryOperator(ASTRootNode rootNode, MethodDescriptor md, ConfigHolder configHolder) {
-    super(rootNode, md.getDaoClass(), configHolder);
+  public QueryOperator(ASTRootNode rootNode, MethodDescriptor md, Config config) {
+    super(rootNode, md, config);
     init(md);
   }
 
@@ -67,18 +71,17 @@ public class QueryOperator extends AbstractOperator {
   }
 
   @Override
-  public Object execute(Object[] values) {
+  public Object execute(Object[] values, InvocationStat stat) {
     InvocationContext context = invocationContextFactory.newInvocationContext(values);
-    return execute(context);
+    return execute(context, stat);
   }
 
-  protected Object execute(InvocationContext context) {
+  protected Object execute(InvocationContext context, InvocationStat stat) {
     context.setGlobalTable(tableGenerator.getTable(context));
 
     try {
       rootNode.render(context);
     } catch (EmptyObjectException e) {
-      final Config config = configHolder.get();
       if (config.isCompatibleWithEmptyList()) {
         return EmptyObject();
       } else {
@@ -87,13 +90,12 @@ public class QueryOperator extends AbstractOperator {
     }
 
     BoundSql boundSql = context.getBoundSql();
-    invocationInterceptorChain.intercept(boundSql, context); // 拦截器
-
     DataSource ds = dataSourceGenerator.getDataSource(context, daoClass);
-    return executeFromDb(ds, boundSql);
+    invocationInterceptorChain.intercept(boundSql, context, ds); // 拦截器
+    return executeFromDb(ds, boundSql, stat);
   }
 
-  private Object executeFromDb(final DataSource ds, final BoundSql boundSql) {
+  private Object executeFromDb(final DataSource ds, final BoundSql boundSql, InvocationStat stat) {
     Object r;
     boolean success = false;
     long now = System.nanoTime();
@@ -127,9 +129,9 @@ public class QueryOperator extends AbstractOperator {
     } finally {
       long cost = System.nanoTime() - now;
       if (success) {
-        statsCounter.recordDatabaseExecuteSuccess(cost);
+        stat.recordDatabaseExecuteSuccess(cost);
       } else {
-        statsCounter.recordDatabaseExecuteException(cost);
+        stat.recordDatabaseExecuteException(cost);
       }
     }
     return r;
@@ -137,16 +139,17 @@ public class QueryOperator extends AbstractOperator {
 
   private <T> RowMapper<?> getRowMapper(Class<T> clazz, ReturnDescriptor rd) {
     Mapper mapperAnno = rd.getAnnotation(Mapper.class);
-    Results resultsAnoo = rd.getAnnotation(Results.class);
     if (mapperAnno != null) { // 自定义mapper
       return Reflection.instantiateClass(mapperAnno.value());
     }
+
     if (TypeHandlerRegistry.hasTypeHandler(clazz)) { // 单列mapper
       return new SingleColumnRowMapper<T>(clazz);
     }
 
     // 类属性mapper
-    Map<String, String> ptc = new HashMap<String, String>();
+    Results resultsAnoo = rd.getAnnotation(Results.class);
+    Map<String, String> ptc = getPropToColMap(clazz);
     if (resultsAnoo != null) {
       Result[] resultAnnos = resultsAnoo.value();
       if (resultAnnos != null) {
@@ -156,8 +159,20 @@ public class QueryOperator extends AbstractOperator {
         }
       }
     }
-    final Config config = configHolder.get();
     return new BeanPropertyRowMapper<T>(clazz, ptc, config.isCheckColumn());
+  }
+
+  private Map<String, String> getPropToColMap(Class<?> clazz) {
+    Map<String, String> propToColMap = new HashMap<String, String>();
+    for (PropertyMeta propertyMeta : BeanUtil.fetchPropertyMetas(clazz)) {
+      Column colAnno = propertyMeta.getPropertyAnno(Column.class);
+      if (colAnno != null) {
+        String prop = propertyMeta.getName();
+        String col = colAnno.value();
+        propToColMap.put(prop, col);
+      }
+    }
+    return propToColMap;
   }
 
   protected Object EmptyObject() {

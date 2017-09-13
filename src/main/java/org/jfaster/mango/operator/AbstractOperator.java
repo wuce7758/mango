@@ -16,11 +16,14 @@
 
 package org.jfaster.mango.operator;
 
+import org.jfaster.mango.annotation.UseTransactionForBatchUpdate;
 import org.jfaster.mango.binding.InvocationContextFactory;
+import org.jfaster.mango.descriptor.MethodDescriptor;
 import org.jfaster.mango.interceptor.InvocationInterceptorChain;
 import org.jfaster.mango.jdbc.JdbcOperations;
+import org.jfaster.mango.operator.generator.DataSourceGenerator;
+import org.jfaster.mango.operator.generator.TableGenerator;
 import org.jfaster.mango.parser.ASTRootNode;
-import org.jfaster.mango.stat.StatsCounter;
 
 /**
  * @author ash
@@ -41,11 +44,6 @@ public abstract class AbstractOperator implements Operator {
    * 拦截器链
    */
   protected InvocationInterceptorChain invocationInterceptorChain;
-
-  /**
-   * 状态统计
-   */
-  protected StatsCounter statsCounter;
 
   /**
    * 全局表
@@ -70,45 +68,43 @@ public abstract class AbstractOperator implements Operator {
   /**
    * mango全局配置信息
    */
-  protected final ConfigHolder configHolder;
+  protected final Config config;
 
   /**
    * 用于对db进行操作
    */
-  protected AbstractOperator(ASTRootNode rootNode, Class<?> daoClass, ConfigHolder configHolder) {
+  protected AbstractOperator(ASTRootNode rootNode, MethodDescriptor md, Config config) {
     this.rootNode = rootNode;
-    this.daoClass = daoClass;
-    this.configHolder = configHolder;
+    this.daoClass = md.getDaoClass();
+    this.config = config.copy();
+    mergeConfig(md);
   }
 
-  @Override
   public void setJdbcOperations(JdbcOperations jdbcOperations) {
     this.jdbcOperations = jdbcOperations;
   }
 
-  @Override
   public void setInvocationContextFactory(InvocationContextFactory invocationContextFactory) {
     this.invocationContextFactory = invocationContextFactory;
   }
 
-  @Override
   public void setTableGenerator(TableGenerator tableGenerator) {
     this.tableGenerator = tableGenerator;
   }
 
-  @Override
   public void setDataSourceGenerator(DataSourceGenerator dataSourceGenerator) {
     this.dataSourceGenerator = dataSourceGenerator;
   }
 
-  @Override
   public void setInvocationInterceptorChain(InvocationInterceptorChain invocationInterceptorChain) {
     this.invocationInterceptorChain = invocationInterceptorChain;
   }
 
-  @Override
-  public void setStatsCounter(StatsCounter statsCounter) {
-    this.statsCounter = statsCounter;
+  private void mergeConfig(MethodDescriptor md) {
+    UseTransactionForBatchUpdate anno = md.getAnnotation(UseTransactionForBatchUpdate.class);
+    if (anno != null) {
+      config.setUseTransactionForBatchUpdate(anno.value());
+    }
   }
 
 }

@@ -16,14 +16,12 @@
 
 package org.jfaster.mango.plugin.stats;
 
-import freemarker.template.Template;
 import org.jfaster.mango.operator.Mango;
-import org.jfaster.mango.stat.OperatorStats;
+import org.jfaster.mango.stat.OperatorStat;
+import org.jfaster.mango.stat.StatInfo;
 
-import java.io.BufferedWriter;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.StringWriter;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,53 +31,28 @@ import java.util.Map;
  */
 public class StatsRender {
 
-  public static String getHtml(boolean isFetchAll, String key) throws Exception {
-    InputStream is = null;
-    InputStreamReader reader = null;
-    StringWriter sw = null;
-    BufferedWriter bw = null;
-    try {
-      is = StatsRender.class.getResourceAsStream("stats.ftl");
-      reader = new InputStreamReader(is);
-      sw = new StringWriter();
-      bw = new BufferedWriter(sw);
-      Map<String, Object> data = new HashMap<String, Object>();
-
-      List<Mango> mangos = Mango.getInstances();
-      if (mangos.size() != 1) {
-        throw new IllegalStateException("instance of mango expected 1 but " + mangos.size());
-      }
-      Mango mango = mangos.get(0);
-      Map<String, OperatorStats> osMap = new HashMap<String, OperatorStats>();
-      Map<String, ExtendStats> esMap = new HashMap<String, ExtendStats>();
-      int index = 0;
-      for (OperatorStats os : mango.getAllStats()) {
-        osMap.put(String.valueOf(index), os);
-        esMap.put(String.valueOf(index), new ExtendStats(os));
-        index++;
-      }
-      data.put("osMap", osMap);
-      data.put("esMap", esMap);
-      data.put("isFetchAll", isFetchAll);
-      data.put("key", key);
-      Template t = new Template(null, reader, null);
-      t.process(data, bw);
-      bw.flush();
-      return sw.toString();
-    } finally {
-      if (reader != null) {
-        reader.close();
-      }
-      if (is != null) {
-        is.close();
-      }
-      if (bw != null) {
-        bw.close();
-      }
-      if (sw != null) {
-        sw.close();
-      }
+  public static String getHtml(boolean isFetchAll) throws Exception {
+    List<Mango> mangos = Mango.getInstances();
+    if (mangos.size() != 1) {
+      throw new IllegalStateException("instance of mango expected 1 but " + mangos.size());
     }
+    Mango mango = mangos.get(0);
+    Map<String, OperatorStat> osMap = new HashMap<String, OperatorStat>();
+    Map<String, ExtendStat> esMap = new HashMap<String, ExtendStat>();
+    StatInfo info = mango.getStatInfo();
+    int index = 0;
+    for (OperatorStat os : info.getStats()) {
+      osMap.put(String.valueOf(index), os);
+      esMap.put(String.valueOf(index), new ExtendStat(os));
+      index++;
+    }
+    String html = Template.render(format(info.getStatBeginTime()), format(info.getStatEndTime()), osMap, esMap, isFetchAll);
+    return html;
+  }
+
+  private static String format(long time) {
+    SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    return format.format(new Date(time));
   }
 
 }

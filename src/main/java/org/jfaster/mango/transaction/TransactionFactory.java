@@ -16,6 +16,7 @@
 
 package org.jfaster.mango.transaction;
 
+import org.jfaster.mango.datasource.AbstractDataSourceFactory;
 import org.jfaster.mango.operator.Mango;
 import org.jfaster.mango.transaction.exception.CannotCreateTransactionException;
 import org.jfaster.mango.util.logging.InternalLogger;
@@ -32,38 +33,42 @@ public abstract class TransactionFactory {
 
   private final static InternalLogger logger = InternalLoggerFactory.getInstance(TransactionFactory.class);
 
-  public static Transaction newTransaction(Mango mango, String database, TransactionIsolationLevel level) {
-    DataSource dataSource = mango.getMasterDataSource(database);
+  public static Transaction newTransaction(Mango mango, String dataSourceFactoryName, TransactionIsolationLevel level) {
+    DataSource dataSource = mango.getMasterDataSource(dataSourceFactoryName);
     if (dataSource == null) {
       throw new IllegalArgumentException("Can't find master DataSource from mango [" + mango + "] " +
-          "with database [" + database + "]");
+          "with datasource factory name [" + dataSourceFactoryName + "]");
     }
     return newTransaction(dataSource, level);
   }
 
-  public static Transaction newTransaction(Mango mango, String database) {
-    return newTransaction(mango, database, TransactionIsolationLevel.DEFAULT);
+  public static Transaction newTransaction(Mango mango, String dataSourceFactoryName) {
+    return newTransaction(mango, dataSourceFactoryName, TransactionIsolationLevel.DEFAULT);
   }
 
-  public static Transaction newTransaction(String database, TransactionIsolationLevel level) {
+  public static Transaction newTransaction(String dataSourceFactoryName, TransactionIsolationLevel level) {
     List<Mango> mangos = Mango.getInstances();
     if (mangos.size() != 1) {
       throw new IllegalStateException("The number of instances mango expected 1 but " + mangos.size() + ", " +
           "Please specify mango instance");
     }
-    return newTransaction(mangos.get(0), database, level);
+    return newTransaction(mangos.get(0), dataSourceFactoryName, level);
   }
 
-  public static Transaction newTransaction(String database) {
-    return newTransaction(database, TransactionIsolationLevel.DEFAULT);
+  public static Transaction newTransaction(String dataSourceFactoryName) {
+    return newTransaction(dataSourceFactoryName, TransactionIsolationLevel.DEFAULT);
   }
 
   public static Transaction newTransaction(TransactionIsolationLevel level) {
-    return newTransaction("", level);
+    return newTransaction(AbstractDataSourceFactory.DEFULT_NAME, level);
   }
 
   public static Transaction newTransaction() {
-    return newTransaction("", TransactionIsolationLevel.DEFAULT);
+    return newTransaction(AbstractDataSourceFactory.DEFULT_NAME, TransactionIsolationLevel.DEFAULT);
+  }
+
+  public static Transaction newTransaction(DataSource dataSource) {
+    return newTransaction(dataSource, TransactionIsolationLevel.DEFAULT);
   }
 
   private static Transaction newTransaction(DataSource dataSource, TransactionIsolationLevel level) {

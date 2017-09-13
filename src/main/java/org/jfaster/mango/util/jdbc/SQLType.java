@@ -49,7 +49,12 @@ public enum SQLType {
   /**
    * oracle中的merge
    */
-  MERGE(true);
+  MERGE(true),
+
+  /**
+   * 清空表
+   */
+  TRANCATE(true);
 
   private boolean needChangeData;
 

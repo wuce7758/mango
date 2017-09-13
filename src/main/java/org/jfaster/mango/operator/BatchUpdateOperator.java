@@ -21,6 +21,8 @@ import org.jfaster.mango.binding.InvocationContext;
 import org.jfaster.mango.descriptor.MethodDescriptor;
 import org.jfaster.mango.exception.DescriptionException;
 import org.jfaster.mango.parser.ASTRootNode;
+import org.jfaster.mango.stat.InvocationStat;
+import org.jfaster.mango.transaction.*;
 import org.jfaster.mango.util.Iterables;
 import org.jfaster.mango.util.ToStringHelper;
 
@@ -34,8 +36,8 @@ public class BatchUpdateOperator extends AbstractOperator {
 
   protected Transformer transformer;
 
-  public BatchUpdateOperator(ASTRootNode rootNode, MethodDescriptor md, ConfigHolder configHolder) {
-    super(rootNode, md.getDaoClass(), configHolder);
+  public BatchUpdateOperator(ASTRootNode rootNode, MethodDescriptor md, Config config) {
+    super(rootNode, md, config);
     transformer = TRANSFORMERS.get(md.getReturnRawType());
     if (transformer == null) {
       String expected = ToStringHelper.toString(TRANSFORMERS.keySet());
@@ -45,7 +47,7 @@ public class BatchUpdateOperator extends AbstractOperator {
   }
 
   @Override
-  public Object execute(Object[] values) {
+  public Object execute(Object[] values, InvocationStat stat) {
     Iterables iterables = getIterables(values);
     if (iterables.isEmpty()) {
       return transformer.transform(new int[]{});
@@ -57,7 +59,7 @@ public class BatchUpdateOperator extends AbstractOperator {
       InvocationContext context = invocationContextFactory.newInvocationContext(new Object[]{obj});
       group(context, gorupMap, t++);
     }
-    int[] ints = executeDb(gorupMap, t);
+    int[] ints = executeDb(gorupMap, t, stat);
     return transformer.transform(ints);
   }
 
@@ -72,7 +74,7 @@ public class BatchUpdateOperator extends AbstractOperator {
 
     rootNode.render(context);
     BoundSql boundSql = context.getBoundSql();
-    invocationInterceptorChain.intercept(boundSql, context); // 拦截器
+    invocationInterceptorChain.intercept(boundSql, context, ds); // 拦截器
 
     group.add(boundSql, position);
   }
@@ -86,7 +88,7 @@ public class BatchUpdateOperator extends AbstractOperator {
     return iterables;
   }
 
-  protected int[] executeDb(Map<DataSource, Group> groupMap, int batchNum) {
+  protected int[] executeDb(Map<DataSource, Group> groupMap, int batchNum, InvocationStat stat) {
     int[] r = new int[batchNum];
     long now = System.nanoTime();
     int t = 0;
@@ -95,7 +97,9 @@ public class BatchUpdateOperator extends AbstractOperator {
         DataSource ds = entry.getKey();
         List<BoundSql> boundSqls = entry.getValue().getBoundSqls();
         List<Integer> positions = entry.getValue().getPositions();
-        int[] ints = jdbcOperations.batchUpdate(ds, boundSqls);
+        int[] ints = config.isUseTransactionForBatchUpdate() ?
+            useTransactionBatchUpdate(ds, boundSqls) :
+            jdbcOperations.batchUpdate(ds, boundSqls);
         for (int i = 0; i < ints.length; i++) {
           r[positions.get(i)] = ints[i];
         }
@@ -104,12 +108,25 @@ public class BatchUpdateOperator extends AbstractOperator {
     } finally {
       long cost = System.nanoTime() - now;
       if (t == groupMap.entrySet().size()) {
-        statsCounter.recordDatabaseExecuteSuccess(cost);
+        stat.recordDatabaseExecuteSuccess(cost);
       } else {
-        statsCounter.recordDatabaseExecuteException(cost);
+        stat.recordDatabaseExecuteException(cost);
       }
     }
     return r;
+  }
+
+  private int[]  useTransactionBatchUpdate(DataSource ds, List<BoundSql> boundSqls) {
+    int[] ints;
+    Transaction transaction = TransactionFactory.newTransaction(ds);
+    try {
+      ints = jdbcOperations.batchUpdate(ds, boundSqls);
+    } catch (RuntimeException e) {
+      transaction.rollback();
+      throw e;
+    }
+    transaction.commit();
+    return ints;
   }
 
   protected static class Group {

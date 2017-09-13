@@ -17,29 +17,58 @@
 package org.jfaster.mango.operator;
 
 /**
- * mango全局配置信息
+ * mango的一些扩展配置信息
  *
  * @author ash
  */
 public class Config {
 
-  private boolean compatibleWithEmptyList = true;
+  private boolean isCompatibleWithEmptyList = true;
 
-  private boolean checkColumn = false;
+  private boolean isCheckColumn = false;
+
+  private boolean isUseActualParamName = false;
+
+  private boolean isUseTransactionForBatchUpdate = false;
 
   public boolean isCompatibleWithEmptyList() {
-    return compatibleWithEmptyList;
+    return isCompatibleWithEmptyList;
   }
 
   public void setCompatibleWithEmptyList(boolean compatibleWithEmptyList) {
-    this.compatibleWithEmptyList = compatibleWithEmptyList;
+    isCompatibleWithEmptyList = compatibleWithEmptyList;
   }
 
   public boolean isCheckColumn() {
-    return checkColumn;
+    return isCheckColumn;
   }
 
   public void setCheckColumn(boolean checkColumn) {
-    this.checkColumn = checkColumn;
+    isCheckColumn = checkColumn;
+  }
+
+  public boolean isUseActualParamName() {
+    return isUseActualParamName;
+  }
+
+  public void setUseActualParamName(boolean useActualParamName) {
+    isUseActualParamName = useActualParamName;
+  }
+
+  public boolean isUseTransactionForBatchUpdate() {
+    return isUseTransactionForBatchUpdate;
+  }
+
+  public void setUseTransactionForBatchUpdate(boolean useTransactionForBatchUpdate) {
+    isUseTransactionForBatchUpdate = useTransactionForBatchUpdate;
+  }
+
+  public Config copy() {
+    Config config = new Config();
+    config.setCompatibleWithEmptyList(isCompatibleWithEmptyList());
+    config.setCheckColumn(isCheckColumn());
+    config.setUseActualParamName(isUseActualParamName());
+    config.setUseTransactionForBatchUpdate(isUseTransactionForBatchUpdate());
+    return config;
   }
 }

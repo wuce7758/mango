@@ -5,6 +5,7 @@ import org.eclipse.jetty.server.Server;
 import org.eclipse.jetty.servlet.ServletContextHandler;
 import org.eclipse.jetty.servlet.ServletHolder;
 import org.jfaster.mango.annotation.*;
+import org.jfaster.mango.crud.CrudDao;
 import org.jfaster.mango.operator.Mango;
 import org.jfaster.mango.operator.cache.Day;
 import org.jfaster.mango.operator.cache.LocalCacheHandler;
@@ -37,9 +38,9 @@ public class HttpServer {
     context.setContextPath("/");
     server.setHandler(context);
 
-    ServletHolder servlet = new ServletHolder(new MangoStatsServlet());
+    ServletHolder servlet = new ServletHolder(new MangoStatServlet());
     //servlet.setInitParameter("key", "9527");
-    context.addServlet(servlet, "/mango-stats");
+    context.addServlet(servlet, "/mango-stat");
     server.start();
     server.join();
   }
@@ -47,9 +48,11 @@ public class HttpServer {
   private static void init() throws Exception {
     DataSource ds = DataSourceConfig.getDataSource();
     Table.USER.load(ds);
+    Table.MSG.load(ds);
     Table.MSG_PARTITION.load(ds);
     Mango mango = Mango.newInstance(ds);
-    mango.setDefaultCacheHandler(new LocalCacheHandler() {
+    mango.setLazyInit(true);
+    mango.setCacheHandler(new LocalCacheHandler() {
       void sleep() {
         try {
           Thread.sleep(10);
@@ -93,8 +96,9 @@ public class HttpServer {
         super.delete(key);
       }
     });
-    final UserDao userDao = mango.create(UserDao.class, true);
-    final MsgDao msgDao = mango.create(MsgDao.class, true);
+    final UserDao userDao = mango.create(UserDao.class);
+    final MsgDao msgDao = mango.create(MsgDao.class);
+    final CrudMsgDao crudMsgDao = mango.create(CrudMsgDao.class);
 
     int id = 1;
     userDao.getIntegerId(id);
@@ -103,6 +107,8 @@ public class HttpServer {
 
     int id1 = userDao.insertUser(createRandomUser());
     int id2 = userDao.insertUser(createRandomUser());
+    crudMsgDao.add(Msg.createRandomMsg());
+    crudMsgDao.add(Msg.createRandomMsg());
     List<Integer> ids = Lists.newArrayList(id1, id2);
     userDao.getUser(id1);
     userDao.getUser(id1);
@@ -125,6 +131,8 @@ public class HttpServer {
         for (int i = 0; i < 1500; i++) {
           userDao.getLongObjMoney(id, null, null);
           msgDao.getMsgs(id);
+          crudMsgDao.getAll();
+          crudMsgDao.count();
         }
       }
     }, 0, 10, TimeUnit.SECONDS);
@@ -181,6 +189,10 @@ public class HttpServer {
     @SQL("select id, uid, content from #table where uid=:1")
     public List<Msg> getMsgs(@ShardingBy int uid);
 
+  }
+
+  @DB(table = "msg")
+  interface CrudMsgDao extends CrudDao<Msg, Integer> {
   }
 
   private static User createRandomUser() {

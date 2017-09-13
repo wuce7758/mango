@@ -17,6 +17,7 @@
 package org.jfaster.mango.operator;
 
 import org.jfaster.mango.binding.BoundSql;
+import org.jfaster.mango.datasource.DataSourceFactoryGroup;
 import org.jfaster.mango.datasource.SimpleDataSourceFactory;
 import org.jfaster.mango.descriptor.MethodDescriptor;
 import org.jfaster.mango.descriptor.ParameterDescriptor;
@@ -24,7 +25,8 @@ import org.jfaster.mango.descriptor.ReturnDescriptor;
 import org.jfaster.mango.exception.DescriptionException;
 import org.jfaster.mango.interceptor.InterceptorChain;
 import org.jfaster.mango.jdbc.GeneratedKeyHolder;
-import org.jfaster.mango.stat.StatsCounter;
+import org.jfaster.mango.stat.MetaStat;
+import org.jfaster.mango.stat.InvocationStat;
 import org.jfaster.mango.support.*;
 import org.jfaster.mango.support.model4table.User;
 import org.jfaster.mango.type.IntegerTypeHandler;
@@ -54,10 +56,8 @@ public class UpdateOperatorTest {
     TypeToken<User> pt = TypeToken.of(User.class);
     TypeToken<Integer> rt = TypeToken.of(int.class);
     String srcSql = "update user set name=:1.name where id=:1.id";
-    Operator operator = getOperator(pt, rt, srcSql);
+    AbstractOperator operator = getOperator(pt, rt, srcSql);
 
-    StatsCounter sc = new StatsCounter();
-    operator.setStatsCounter(sc);
     operator.setJdbcOperations(new JdbcOperationsAdapter() {
       @Override
       public int update(DataSource ds, BoundSql boundSql) {
@@ -75,7 +75,7 @@ public class UpdateOperatorTest {
     User user = new User();
     user.setId(100);
     user.setName("ash");
-    Object r = operator.execute(new Object[]{user});
+    Object r = operator.execute(new Object[]{user}, InvocationStat.create());
     assertThat(r.getClass().equals(Integer.class), is(true));
   }
 
@@ -84,10 +84,8 @@ public class UpdateOperatorTest {
     TypeToken<User> pt = TypeToken.of(User.class);
     TypeToken<Void> rt = TypeToken.of(void.class);
     String srcSql = "update user set name=:1.name where id=:1.id";
-    Operator operator = getOperator(pt, rt, srcSql);
+    AbstractOperator operator = getOperator(pt, rt, srcSql);
 
-    StatsCounter sc = new StatsCounter();
-    operator.setStatsCounter(sc);
     operator.setJdbcOperations(new JdbcOperationsAdapter() {
       @Override
       public int update(DataSource ds,  BoundSql boundSql) {
@@ -105,7 +103,7 @@ public class UpdateOperatorTest {
     User user = new User();
     user.setId(100);
     user.setName("ash");
-    Object r = operator.execute(new Object[]{user});
+    Object r = operator.execute(new Object[]{user}, InvocationStat.create());
     assertThat(r, nullValue());
   }
 
@@ -114,10 +112,8 @@ public class UpdateOperatorTest {
     TypeToken<User> pt = TypeToken.of(User.class);
     TypeToken<Boolean> rt = TypeToken.of(boolean.class);
     String srcSql = "update user set name=:1.name where id=:1.id";
-    Operator operator = getOperator(pt, rt, srcSql);
+    AbstractOperator operator = getOperator(pt, rt, srcSql);
 
-    StatsCounter sc = new StatsCounter();
-    operator.setStatsCounter(sc);
     operator.setJdbcOperations(new JdbcOperationsAdapter() {
       @Override
       public int update(DataSource ds, BoundSql boundSql) {
@@ -135,7 +131,7 @@ public class UpdateOperatorTest {
     User user = new User();
     user.setId(100);
     user.setName("ash");
-    boolean r = (Boolean) operator.execute(new Object[]{user});
+    boolean r = (Boolean) operator.execute(new Object[]{user}, InvocationStat.create());
     assertThat(r, is(false));
   }
 
@@ -144,10 +140,8 @@ public class UpdateOperatorTest {
     TypeToken<User> pt = TypeToken.of(User.class);
     TypeToken<Integer> rt = TypeToken.of(int.class);
     String srcSql = "insert into user(id, name) values(:1.id, :1.name)";
-    Operator operator = getOperatorReturnGeneratedId(pt, rt, srcSql);
+    AbstractOperator operator = getOperatorReturnGeneratedId(pt, rt, srcSql);
 
-    StatsCounter sc = new StatsCounter();
-    operator.setStatsCounter(sc);
     operator.setJdbcOperations(new JdbcOperationsAdapter() {
       @Override
       public int update(DataSource ds, BoundSql boundSql, GeneratedKeyHolder holder) {
@@ -167,7 +161,7 @@ public class UpdateOperatorTest {
     User user = new User();
     user.setId(100);
     user.setName("ash");
-    Object r = operator.execute(new Object[]{user});
+    Object r = operator.execute(new Object[]{user}, InvocationStat.create());
     assertThat(r.getClass().equals(Integer.class), is(true));
   }
 
@@ -176,10 +170,8 @@ public class UpdateOperatorTest {
     TypeToken<User> pt = TypeToken.of(User.class);
     TypeToken<Long> rt = TypeToken.of(long.class);
     String srcSql = "insert into user(id, name) values(:1.id, :1.name)";
-    Operator operator = getOperatorReturnGeneratedId(pt, rt, srcSql);
+    AbstractOperator operator = getOperatorReturnGeneratedId(pt, rt, srcSql);
 
-    StatsCounter sc = new StatsCounter();
-    operator.setStatsCounter(sc);
     operator.setJdbcOperations(new JdbcOperationsAdapter() {
       @Override
       public int update(DataSource ds, BoundSql boundSql, GeneratedKeyHolder holder) {
@@ -200,7 +192,7 @@ public class UpdateOperatorTest {
     User user = new User();
     user.setId(100);
     user.setName("ash");
-    Object r = operator.execute(new Object[]{user});
+    Object r = operator.execute(new Object[]{user}, InvocationStat.create());
     assertThat(r.getClass().equals(Long.class), is(true));
   }
 
@@ -209,10 +201,8 @@ public class UpdateOperatorTest {
     TypeToken<User> pt = TypeToken.of(User.class);
     TypeToken<Integer> rt = TypeToken.of(int.class);
     String srcSql = "update user set name=:1.name where id=:1.id";
-    Operator operator = getOperator(pt, rt, srcSql);
+    AbstractOperator operator = getOperator(pt, rt, srcSql);
 
-    StatsCounter sc = new StatsCounter();
-    operator.setStatsCounter(sc);
     operator.setJdbcOperations(new JdbcOperationsAdapter() {
       @Override
       public int update(DataSource ds, BoundSql boundSql) {
@@ -230,22 +220,23 @@ public class UpdateOperatorTest {
     User user = new User();
     user.setId(100);
     user.setName("ash");
-    operator.execute(new Object[]{user});
-    assertThat(sc.snapshot().getDatabaseExecuteSuccessCount(), equalTo(1L));
-    operator.execute(new Object[]{user});
-    assertThat(sc.snapshot().getDatabaseExecuteSuccessCount(), equalTo(2L));
+    InvocationStat stat = InvocationStat.create();
+    operator.execute(new Object[]{user}, stat);
+    assertThat(stat.getDatabaseExecuteSuccessCount(), equalTo(1L));
+    operator.execute(new Object[]{user}, stat);
+    assertThat(stat.getDatabaseExecuteSuccessCount(), equalTo(2L));
 
     operator.setJdbcOperations(new JdbcOperationsAdapter());
     try {
-      operator.execute(new Object[]{user});
+      operator.execute(new Object[]{user}, stat);
     } catch (UnsupportedOperationException e) {
     }
-    assertThat(sc.snapshot().getDatabaseExecuteExceptionCount(), equalTo(1L));
+    assertThat(stat.getDatabaseExecuteExceptionCount(), equalTo(1L));
     try {
-      operator.execute(new Object[]{user});
+      operator.execute(new Object[]{user}, stat);
     } catch (UnsupportedOperationException e) {
     }
-    assertThat(sc.snapshot().getDatabaseExecuteExceptionCount(), equalTo(2L));
+    assertThat(stat.getDatabaseExecuteExceptionCount(), equalTo(2L));
   }
 
   @Rule
@@ -260,10 +251,8 @@ public class UpdateOperatorTest {
     TypeToken<User> pt = TypeToken.of(User.class);
     TypeToken<String> rt = TypeToken.of(String.class);
     String srcSql = "update user set name=:1.name where id=:1.id";
-    Operator operator = getOperator(pt, rt, srcSql);
+    AbstractOperator operator = getOperator(pt, rt, srcSql);
 
-    StatsCounter sc = new StatsCounter();
-    operator.setStatsCounter(sc);
     operator.setJdbcOperations(new JdbcOperationsAdapter() {
       @Override
       public int update(DataSource ds, BoundSql boundSql) {
@@ -281,7 +270,7 @@ public class UpdateOperatorTest {
     User user = new User();
     user.setId(100);
     user.setName("ash");
-    operator.execute(new Object[]{user});
+    operator.execute(new Object[]{user}, InvocationStat.create());
   }
 
   @Test
@@ -293,10 +282,8 @@ public class UpdateOperatorTest {
     TypeToken<User> pt = TypeToken.of(User.class);
     TypeToken<Void> rt = TypeToken.of(void.class);
     String srcSql = "insert into user(id, name) values(:1.id, :1.name)";
-    Operator operator = getOperatorReturnGeneratedId(pt, rt, srcSql);
+    AbstractOperator operator = getOperatorReturnGeneratedId(pt, rt, srcSql);
 
-    StatsCounter sc = new StatsCounter();
-    operator.setStatsCounter(sc);
     operator.setJdbcOperations(new JdbcOperationsAdapter() {
       @Override
       public int update(DataSource ds, BoundSql boundSql, GeneratedKeyHolder holder) {
@@ -316,11 +303,11 @@ public class UpdateOperatorTest {
     User user = new User();
     user.setId(100);
     user.setName("ash");
-    operator.execute(new Object[]{user});
+    operator.execute(new Object[]{user}, InvocationStat.create());
   }
 
 
-  private Operator getOperator(TypeToken<?> pt, TypeToken<?> rt, String srcSql) throws Exception {
+  private AbstractOperator getOperator(TypeToken<?> pt, TypeToken<?> rt, String srcSql) throws Exception {
     List<Annotation> empty = Collections.emptyList();
     ParameterDescriptor p = ParameterDescriptor.create(0, pt.getType(), empty, "1");
     List<ParameterDescriptor> pds = Arrays.asList(p);
@@ -329,17 +316,17 @@ public class UpdateOperatorTest {
     methodAnnos.add(new MockDB());
     methodAnnos.add(new MockSQL(srcSql));
     ReturnDescriptor rd = ReturnDescriptor.create(rt.getType(), methodAnnos);
-    MethodDescriptor md = MethodDescriptor.create(null, rd, pds);
+    MethodDescriptor md = MethodDescriptor.create(null, null, rd, pds);
+    DataSourceFactoryGroup group = new DataSourceFactoryGroup();
+    group.addDataSourceFactory(new SimpleDataSourceFactory(DataSourceConfig.getDataSource()));
 
-    OperatorFactory factory = new OperatorFactory(
-        new SimpleDataSourceFactory(DataSourceConfig.getDataSource()),
-        null, new InterceptorChain(), null, new ConfigHolder());
+    OperatorFactory factory = new OperatorFactory(group, null, new InterceptorChain(), new Config());
 
-    Operator operator = factory.getOperator(md, new StatsCounter());
+    AbstractOperator operator = factory.getOperator(md, MetaStat.create());
     return operator;
   }
 
-  private Operator getOperatorReturnGeneratedId(TypeToken<?> pt, TypeToken<?> rt, String srcSql) throws Exception {
+  private AbstractOperator getOperatorReturnGeneratedId(TypeToken<?> pt, TypeToken<?> rt, String srcSql) throws Exception {
     List<Annotation> empty = Collections.emptyList();
     ParameterDescriptor p = ParameterDescriptor.create(0, pt.getType(), empty, "1");
     List<ParameterDescriptor> pds = Arrays.asList(p);
@@ -349,13 +336,13 @@ public class UpdateOperatorTest {
     methodAnnos.add(new MockSQL(srcSql));
     methodAnnos.add(new MockReturnGeneratedId());
     ReturnDescriptor rd = ReturnDescriptor.create(rt.getType(), methodAnnos);
-    MethodDescriptor md = MethodDescriptor.create(null, rd, pds);
+    MethodDescriptor md = MethodDescriptor.create(null, null, rd, pds);
+    DataSourceFactoryGroup group = new DataSourceFactoryGroup();
+    group.addDataSourceFactory(new SimpleDataSourceFactory(DataSourceConfig.getDataSource()));
 
-    OperatorFactory factory = new OperatorFactory(
-        new SimpleDataSourceFactory(DataSourceConfig.getDataSource()),
-        null, new InterceptorChain(), null, new ConfigHolder());
+    OperatorFactory factory = new OperatorFactory(group, null, new InterceptorChain(), new Config());
 
-    Operator operator = factory.getOperator(md, new StatsCounter());
+    AbstractOperator operator = factory.getOperator(md, MetaStat.create());
     return operator;
   }
 

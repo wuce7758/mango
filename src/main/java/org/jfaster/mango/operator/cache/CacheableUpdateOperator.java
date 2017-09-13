@@ -19,10 +19,11 @@ package org.jfaster.mango.operator.cache;
 import org.jfaster.mango.binding.InvocationContext;
 import org.jfaster.mango.descriptor.MethodDescriptor;
 import org.jfaster.mango.exception.DescriptionException;
-import org.jfaster.mango.operator.ConfigHolder;
+import org.jfaster.mango.operator.Config;
 import org.jfaster.mango.operator.UpdateOperator;
 import org.jfaster.mango.parser.ASTJDBCIterableParameter;
 import org.jfaster.mango.parser.ASTRootNode;
+import org.jfaster.mango.stat.InvocationStat;
 import org.jfaster.mango.util.logging.InternalLogger;
 import org.jfaster.mango.util.logging.InternalLoggerFactory;
 
@@ -38,8 +39,8 @@ public class CacheableUpdateOperator extends UpdateOperator {
 
   private CacheDriver driver;
 
-  public CacheableUpdateOperator(ASTRootNode rootNode, MethodDescriptor md, CacheDriver cacheDriver, ConfigHolder configHolder) {
-    super(rootNode, md, configHolder);
+  public CacheableUpdateOperator(ASTRootNode rootNode, MethodDescriptor md, CacheDriver cacheDriver, Config config) {
+    super(rootNode, md, config);
 
     this.driver = cacheDriver;
 
@@ -51,23 +52,23 @@ public class CacheableUpdateOperator extends UpdateOperator {
   }
 
   @Override
-  public Object execute(Object[] values) {
+  public Object execute(Object[] values, InvocationStat stat) {
     InvocationContext context = invocationContextFactory.newInvocationContext(values);
-    Object r = execute(context);
+    Object r = execute(context, stat);
     if (driver.isUseMultipleKeys()) { // 多个key，例如：update table set name='ash' where id in (1, 2, 3);
       Set<String> keys = driver.getCacheKeys(context);
       if (!keys.isEmpty()) {
         if (logger.isDebugEnabled()) {
           logger.debug("Cache delete for multiple keys {}", keys);
         }
-        driver.batchDeleteFromCache(keys);
+        driver.batchDeleteFromCache(keys, stat);
       }
     } else { // 单个key，例如：update table set name='ash' where id ＝ 1;
       String key = driver.getCacheKey(context);
       if (logger.isDebugEnabled()) {
         logger.debug("Cache delete for single key [{}]", key);
       }
-      driver.deleteFromCache(key);
+      driver.deleteFromCache(key, stat);
     }
     return r;
   }

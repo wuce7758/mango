@@ -22,7 +22,6 @@ import org.jfaster.mango.annotation.DB;
 import org.jfaster.mango.annotation.Rename;
 import org.jfaster.mango.annotation.ReturnGeneratedId;
 import org.jfaster.mango.annotation.SQL;
-import org.jfaster.mango.operator.Config;
 import org.jfaster.mango.operator.Mango;
 import org.jfaster.mango.parser.EmptyCollectionException;
 import org.jfaster.mango.support.DataSourceConfig;
@@ -52,7 +51,10 @@ public class DbTest {
 
   private final static DataSource ds = DataSourceConfig.getDataSource();
   private final static Mango mango = Mango.newInstance(ds);
-  private final static UserDao dao = mango.create(UserDao.class, true);
+  static {
+    mango.setLazyInit(true);
+  }
+  private final static UserDao dao = mango.create(UserDao.class);
 
   @Before
   public void before() throws Exception {
@@ -305,15 +307,26 @@ public class DbTest {
 
   @Test
   public void testQueryEmpty() throws Exception {
-    Config oldConfig = mango.getConfig();
-    Config newConfig = new Config();
-    newConfig.setCompatibleWithEmptyList(true);
-    mango.setConfig(newConfig);
+    boolean old = mango.isCompatibleWithEmptyList();
+    mango.setCompatibleWithEmptyList(true);
     assertThat(dao.getUsersInList(new ArrayList<Integer>()).size(), equalTo(0));
     assertThat(dao.getUsersInArray(new int[]{}).length, equalTo(0));
     assertThat(dao.getUsersInArray2(new int[]{}), nullValue());
     assertThat(dao.getUsersInSet(new HashSet<Integer>()).size(), equalTo(0));
-    mango.setConfig(oldConfig);
+    mango.setCompatibleWithEmptyList(old);
+  }
+
+  @Test
+  public void testTrancate() throws Exception {
+    if (DataSourceConfig.isUseMySQL()) {
+      assertThat(dao.count(), equalTo(0));
+      User user = createRandomUser();
+      dao.insertUser(user);
+      dao.insertUser(user);
+      assertThat(dao.count(), equalTo(2));
+      dao.trancate();
+      assertThat(dao.count(), equalTo(0));
+    }
   }
 
   @Rule
@@ -323,14 +336,13 @@ public class DbTest {
   public void testQueryEmpty2() throws Exception {
     thrown.expect(EmptyCollectionException.class);
     thrown.expectMessage("value of :1 can't be empty");
-    Config oldConfig = mango.getConfig();
-    Config newConfig = new Config();
-    newConfig.setCompatibleWithEmptyList(false);
-    mango.setConfig(newConfig);
+    boolean old = mango.isCompatibleWithEmptyList();
+    mango.setCompatibleWithEmptyList(false);
+    UserDao dao2 = mango.create(UserDao.class);
     try {
-      dao.getUsersInList(new ArrayList<Integer>());
+      dao2.getUsersInList(new ArrayList<Integer>());
     } finally {
-      mango.setConfig(oldConfig);
+      mango.setCompatibleWithEmptyList(old);
     }
   }
 
@@ -411,26 +423,23 @@ public class DbTest {
 
   @Test
   public void testUpdateEmpty() {
-    Config oldConfig = mango.getConfig();
-    Config newConfig = new Config();
-    newConfig.setCompatibleWithEmptyList(true);
-    mango.setConfig(newConfig);
+    boolean old = mango.isCompatibleWithEmptyList();
+    mango.setCompatibleWithEmptyList(true);
     assertThat(dao.updateUsers(new ArrayList<Integer>(), "ash"), equalTo(0));
-    mango.setConfig(oldConfig);
+    mango.setCompatibleWithEmptyList(old);
   }
 
   @Test
   public void testUpdateEmpty2() {
     thrown.expect(EmptyCollectionException.class);
     thrown.expectMessage("value of :ids can't be empty");
-    Config oldConfig = mango.getConfig();
-    Config newConfig = new Config();
-    newConfig.setCompatibleWithEmptyList(false);
-    mango.setConfig(newConfig);
+    boolean old = mango.isCompatibleWithEmptyList();
+    mango.setCompatibleWithEmptyList(false);
+    UserDao dao2 = mango.create(UserDao.class);
     try {
-      dao.updateUsers(new ArrayList<Integer>(), "ash");
+      dao2.updateUsers(new ArrayList<Integer>(), "ash");
     } finally {
-      mango.setConfig(oldConfig);
+      mango.setCompatibleWithEmptyList(old);
     }
   }
 
@@ -606,6 +615,12 @@ public class DbTest {
 
     @SQL("select max(id) from user")
     public int getMaxInt();
+
+    @SQL("select count(1) from user")
+    public int count();
+
+    @SQL("truncate user")
+    public int trancate();
 
     /**
      * *******************************************************************
